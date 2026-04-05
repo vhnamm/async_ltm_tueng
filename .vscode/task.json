@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build boost",
+      "type": "shell",
+      "command": "g++",
+      "args": [
+        "test.cpp",
+        "-IC:/msys64/ucrt64/include",
+        "-LC:/msys64/ucrt64/lib",
+        "-lboost_serialization",
+        "-o",
+        "test.exe"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    }
+  ]
+}

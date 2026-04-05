@@ -1,0 +1,24 @@
+- WNDCLASS
+Định nghĩa: WNDCLASS là một cấu trúc (struct) trong Windows API, dùng để định nghĩa một "lớp cửa sổ" (window class). Lớp cửa sổ là một khuôn mẫu cho các cửa sổ, chứa các thuộc tính chung như phong cách, biểu tượng, con trỏ chuột, và quan trọng nhất là hàm xử lý tin nhắn (window procedure).
++   Chức năng chính:
+Đăng ký lớp cửa sổ với hệ thống Windows bằng hàm RegisterClass hoặc RegisterClassEx.
+Sau khi đăng ký, bạn có thể tạo nhiều cửa sổ dựa trên lớp này mà không cần định nghĩa lại các thuộc tính.
+Các thành viên quan trọng của WNDCLASS bao gồm:
+lpfnWndProc: Con trỏ đến hàm xử lý tin nhắn của cửa sổ.
+hInstance: Handle của instance ứng dụng.
+lpszClassName: Tên của lớp cửa sổ (dùng để tham chiếu sau này).
+Các thuộc tính khác như hCursor, hIcon, hbrBackground (màu nền), v.v.
+Ví dụ sử dụng: Trong mã của bạn (server_wd.cpp), bạn đang khởi tạo một biến WNDCLASS wc = {}; bên trong hàm createMessageWindow. Điều này chuẩn bị để định nghĩa một lớp cửa sổ, sau đó có thể đăng ký và sử dụng để tạo cửa sổ.
+
+- HWND
+Định nghĩa: HWND là viết tắt của "Handle to a Window", là một kiểu dữ liệu (thường là con trỏ hoặc số nguyên) đại diện cho một handle (định danh duy nhất) của một cửa sổ cụ thể trong hệ thống Windows.
++   Chức năng chính:
+Là định danh duy nhất cho mỗi cửa sổ được tạo ra, giúp Windows và ứng dụng quản lý cửa sổ đó.
+Được trả về bởi các hàm tạo cửa sổ như CreateWindow hoặc CreateWindowEx.
+Sử dụng để thao tác với cửa sổ: thay đổi kích thước (MoveWindow), hiển thị/ẩn (ShowWindow), gửi tin nhắn (SendMessage), v.v.
+Nếu HWND là NULL, nó thường chỉ ra lỗi hoặc cửa sổ không tồn tại.
+Ví dụ sử dụng: Hàm createMessageWindow của bạn trả về một HWND, có lẽ là handle của cửa sổ tin nhắn được tạo ra. Bạn có thể dùng handle này để kiểm soát cửa sổ đó.
+Quan hệ giữa WNDCLASS và HWND
+Bạn định nghĩa WNDCLASS trước, đăng ký nó, rồi dùng nó để tạo cửa sổ và nhận HWND.
+Một lớp cửa sổ (WNDCLASS) có thể được dùng để tạo nhiều cửa sổ (mỗi cửa sổ có HWND riêng).
+Trong ngữ cảnh mã của bạn, có vẻ như bạn đang xây dựng một ứng dụng socket với giao diện Windows (có thể là cửa sổ ẩn để xử lý tin nhắn mạng). Nếu bạn cần ví dụ hoàn chỉnh hoặc giải thích sâu hơn về cách sử dụng chúng trong dự án, hãy cung cấp thêm chi tiết!
