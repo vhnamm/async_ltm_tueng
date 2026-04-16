@@ -1,0 +1,92 @@
+TCP hoạt động theo cơ chế bắt tay 3 bước:
+client -> gửi SYN yêu cầu kết nối
+server -> gửi lại SYN ACK
+client -> gửi ACK xác nhận kết nối và bắt đầu truyền tin
+
+THƯ VIỆN BOOST SERIALIZE CÓ TÁC DỤNG GÌ?
+1. Khi bạn gửi "thuần" 1 String (Gửi nội dung)
+Khi bạn làm thế này:
+cpp
+std::string s = "Hello";
+send(socket, s.c_str(), s.size(), 0); // Bạn đang gửi CHỮ 'H', 'e', 'l', 'l', 'o'
+Use code with caution.
+
+Cách này chạy được vì bạn đã chủ động trích xuất vùng nhớ chứa dữ liệu thật (s.c_str()) để gửi đi. Máy bên kia nhận được đúng các ký tự đó.
+
+2. Khi bạn cho vào Class và gửi cả Class (Gửi cái vỏ)
+Giả sử bạn có class:
+cpp
+class User {
+    int id;
+    std::string name; 
+};
+User u = {1, "Hanoi"};
+send(socket, &u, sizeof(u), 0); // SAI LẦM Ở ĐÂY
+Use code with caution.
+
+Lúc này, hàm send sẽ copy thô (bit-by-bit) vùng nhớ của đối tượng u. Trong vùng nhớ đó có:
+Biến id: 4 byte (OK, gửi được số 1).
+Biến name: Khoảng 32 byte vỏ quản lý (chứa một địa chỉ con trỏ trỏ đến chữ "Hanoi" nằm ở một chỗ khác trên RAM).
+Kết quả: Bạn gửi đi một cái "địa chỉ nhà" trên máy của bạn. Máy nhận mở "phong bì" ra thấy địa chỉ 0x12345, nó tìm đến địa chỉ đó trên RAM của nó thì... chả có chữ "Hanoi" nào cả, hoặc tệ hơn là gây crash ứng dụng.
+
+
+
+1. Các hàm, cấu trúc phía client:
+- socket(int AF, int type, int protocol)
+    + AF: họ giao thức địa chỉ thường sử dụng: VD: IPV4
+    + type: Kiểu của socket các giá trị hay sd: SOCK_STREAM, SOCK_DGRAM
+    + int protocol: Giao thức tầng giao vận
+
+//Client phải khai báo ĐỊA CHỈ của SERVER cần kết nối tới
+- struct sockaddr_in:
+    + Winsock sử dụng cấu trúc này để lưu ĐỊA CHỈ của ứng dụng ĐÍCH cần kết nối đến
+    + htons(port): chuyển đổi cổng sang dạng network-byte order (bigEndian)
+    +inet_adr(): chuyển đổi xâu địa chỉ sang số 4byte dạng network
+
+//Gửi gói tin SYN tới server
+- connect(client_socket, (SOCKADDR*)&server_addr, sizeof(server_addr));
+    +Gửi yêu cầu kết nối tới server vào
+    +(SOCKADDR*)&server_addr : ép kiểu sang con trỏ SOCKADDR* vì dùng chung cả v4, v6
+
+client gọi connect() 
+ Gửi SYN.
+Server (đang listen) 
+ Hệ điều hành tự động gửi SYN-ACK.
+Client nhận SYN-ACK 
+ Hệ điều hành tự động gửi ACK.
+Client: Hàm connect() thoát (thành công).
+Server: Hàm accept() thoát (trả về một socket mới để giao tiếp)
+
+/----- Chờ server phản hồi, nếu server đang listen -> Server nhận SYN -> gửi lại SYN ACK -> kernel phía client TỰ ĐỘNG gửi ACK lại (ko diễn ra lúc accept())
+
+- BOOST serialize:
+    + stringstream ss: Buffer trung gian trong RAM — dùng để Boost ghi binary data vào, sau đó ta lấy ra thành string để send
+    + binary_oarchive boa(ss): Tạo output archive gắn với ss. Khi boa << sv, Boost sẽ ghi binary bytes của sv vào ss
+    + boa << sv;
+        Gọi hàm serialize() của SinhVien theo chiều ghi. Boost mã hoá msv, hoTen, isExist thành binary.
+    
+    + ss.str(): Lấy nội dung của stringstream ra dạng string.
+  
+
+
+- send(SOCKET s, const char *buf, int len, int flags)  
+    +const char* -> con trỏ tới vùng nhớ chứa DỮ LIỆU CẦN GỬI
+    => phải tryền vào svData.data(): Trả về const char* — con trỏ tới vùng nhớ raw của string. send() cần const char* vì nó làm việc với raw bytes.
+
+- int received = recv(client_socket, buffer.data(), buffer.size(), 0);
+- string buffer(2048, '\0'): Cấp phát sẵn 2048 bytes, khởi tạo hết bằng \0. Dùng string như mảng char có quản lý vùng nhớ.
+buffer.data(): Trả về char* (non-const từ C++17). recv cần ghi vào buffer nên phải là char*, không phải const char*.
+received: Số bytes thực sự nhận được. Luôn phải dùng giá trị này để biết đọc bao nhiêu byte — không được dùng buffer.size()
+
+2. Các hàm, cấu trúc bên phía server:
+- bind(server_socket, (SOCKADDR*)&server_addr, sizeof(server_addr));
+    + gắn SOCKET listen vào 1 giao diện mạng (địa chỉ IP + port) cụ thể trên máy server. Để OS có thể chuyển MỌI gói tin TCP đến port đã khai báo vào socket này
+
+- listen(SOCKET, int backlog): chuyển đổi socket đó sang trại thái chờ kết nối
+    +backlog: số lượng kết nối có thể chấp nhận (SOMAXCONN - giá trị tối đa hàng đợi của OS)
+
+-struct sockaddr_in client_addr;
+int len = sizeof(client_addr);
+SOCKET client_socket = accept(server_socket, (SOCKADDR*)&client_addr, &len);
+
+ !: chỉ cần khai báo ra struct sockaddr_in của client, việc còn lại OS sẽ tự fill địa chỉ của client đó

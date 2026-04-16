@@ -1,0 +1,125 @@
+cơ chế hoạt động:
+Trong hệ điều hành sẽ có 1 thằng là message window để xử lí các sự kiện như thao tác di chuột, bàn phím, di chuột... đều là 1 message
+Nên mô hình hoạt động của window sẽ là:
+Mô hình hoạt động của Windows:
+
+  [Sự kiện xảy ra]
+        │
+        ▼
+  ┌─────────────────────┐
+  │   Message Queue     │  ← OS đẩy message vào đây
+  │  [MSG1][MSG2][MSG3] │
+  └─────────────────────┘
+        │
+        ▼
+  GetMessage() ← lấy 1 message ra
+        │
+        ▼
+  DispatchMessage() ← gửi message đến đúng cửa sổ
+        │
+        ▼
+  WindowProc() ← hàm callback xử lý message
+
+  //
+                    ┌─────────────────────────────────┐
+                    │           OS / Winsock           │
+                    │                                  │
+  Client A kết nối─►│  "FD_ACCEPT xảy ra trên         │
+                    │   listenSocket"                  │
+                    │   → đẩy MSG(1111, FD_ACCEPT)     │
+                    │     vào Message Queue            │
+                    └──────────────┬──────────────────┘
+                                   │
+                    ┌──────────────▼──────────────────┐
+                    │         Message Queue            │
+                    │  [MSG: 1111, FD_ACCEPT]          │
+                    └──────────────┬──────────────────┘
+                                   │
+                    ┌──────────────▼──────────────────┐
+                    │   GetMessage() lấy ra            │
+                    │   DispatchMessage() gửi đến      │
+                    │   WindowProc()                   │
+                    └──────────────┬──────────────────┘
+                                   │
+                    ┌──────────────▼──────────────────┐
+                    │   WindowProc xử lý FD_ACCEPT:    │
+                    │   - accept() tạo clientSocket    │
+                    │   - WSAAsyncSelect(clientSocket) │
+                    │     đăng ký FD_READ cho socket   │
+                    │     mới này                      │
+                    └──────────────┬──────────────────┘
+                                   │
+                    Client A gửi data
+                                   │
+                    ┌──────────────▼──────────────────┐
+                    │  OS đẩy MSG(1111, FD_READ)       │
+                    │  cho clientSocket vào queue      │
+                    └──────────────┬──────────────────┘
+                                   │
+                    ┌──────────────▼──────────────────┐
+                    │  WindowProc xử lý FD_READ:       │
+                    │  - recv() đọc data               │
+                    │  - xử lý                         │
+                    │  - send() trả lời                │
+                    └─────────────────────────────────┘
+
+
+- HWND: tạo ra cái như hòm thư để OS còn biết đẩy vào queue của ai??, WindowProc nào xử lí
+→ OS cần biết những thứ này trước
+→ CreateWindow chính là bước tạo ra "hòm thư" để OS biết đẩy vào đâu
+
+- RegisterClass(): Nói với OS:
+      "Có 1 loại cửa sổ tên AsyncSocketWindow
+       Khi nào cửa sổ loại này nhận message
+       thì gọi hàm WindowProc để xử lý"
+      
+      Nhưng lúc này chưa có cửa sổ nào tồn tại cả
+      Chỉ là đăng ký blueprint
+    + Khi bạn gọi:
+
+RegisterClass(&wdac);
+
+Windows sẽ lưu vào hệ thống một bản ghi:
+
+tên class: "AsyncSocketWindow"
+hàm xử lý: WindowProc
+instance: hInstance
+các thuộc tính khác (icon, style...)
+
+
+CreateWindow()
+  │
+  └─► Nói với OS:
+      "Tạo cho tao 1 cửa sổ theo blueprint AsyncSocketWindow"
+      
+      OS tạo ra cửa sổ thật trong bộ nhớ
+      OS tạo ra Message Queue riêng cho cửa sổ này
+      OS trả về HWND = địa chỉ định danh cửa sổ vừa tạo
+
+- WSAAsyncSelect(listenSocket, HWND, 1111, FD_ACCEPT): đặt trạng thái của socket thành non-blocking
+  │
+  └─► Nói với OS:
+      "Khi listenSocket có FD_ACCEPT
+       đẩy message vào queue của cửa sổ HWND"
+
+
+typedef struct tagMSG {
+    HWND   hwnd;     // cửa sổ nhận message
+    UINT   message;  // loại message (VD: WM_PAINT, 1111,...)
+    WPARAM wParam;   // dữ liệu phụ
+    LPARAM lParam;   // dữ liệu phụ
+} MSG;
+
+👉 Nghĩa là:
+
+msg = 1 “gói sự kiện” từ Windows
+
+🧩 Bước 1: GetMessage
+GetMessage(&msg, ...)
+
+👉 Nó làm:
+
+🔥 LẤY 1 message từ hàng đợi (message queue)
+
+Nếu chưa có message → chờ (blocking)
+Có message → đổ vào msg

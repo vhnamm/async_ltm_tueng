@@ -13,11 +13,12 @@ private:
     friend class boost::serialization::access;
 
 public:
-    SinhVien() {}
+    SinhVien(){}
     SinhVien(string msv, string name)
     {
         this->msv = msv;
         this->name = name;
+        
     }
 
     string getName()
@@ -25,12 +26,12 @@ public:
         return this->name;
     }
     string getMsv() { return this->msv; }
-
     template <class Archieve>
     void serialize(Archieve &ar, const unsigned int version)
     {
         ar & msv;
         ar & name;
+
     }
 };
 
@@ -120,18 +121,17 @@ LRESULT CALLBACK WindowProc(HWND hwd, UINT message, WPARAM wParam, LPARAM lParam
     return DefWindowProc(hwd, message, wParam, lParam);
 }
 
-HWND createMessageWindow(HINSTANCE hInstance)
-{
+HWND createMessageWindow(HINSTANCE hInstance){
     WNDCLASS wc = {0};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
     wc.lpszClassName = "AsyncSocketWindow";
 
-    RegisterClass(&wc); // dang ky cua so voi he thong
+    RegisterClass(&wc); 
 
     HWND a = CreateWindow("AsyncSocketWindow", "HiddenWindow", WS_OVERLAPPEDWINDOW, 0, 0, 0, 0,
-                          NULL, NULL, hInstance, NULL); // tao cua so an
-
+                          NULL, NULL, hInstance, NULL);
+        
     return a;
 }
 

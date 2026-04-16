@@ -12,10 +12,12 @@ private:
     friend class boost::serialization::access;
 
 public:
+    SinhVien(){}
     SinhVien(string msv, string name)
     {
         this->msv = msv;
         this->name = name;
+        
     }
 
     string getName()
@@ -29,21 +31,21 @@ public:
     {
         ar & msv;
         ar & name;
+
     }
 };
 
-int main(int argc, char* argv[]){
+
+int main(){
 
     
-    string clientName = argv[1];
-
     WSADATA wsaData;
     WSAStartup(MAKEWORD(2, 2), &wsaData);
     u_short port = 8386;
     struct sockaddr_in serverAddr;
 
-    // create socket
-    SOCKET clientSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    SOCKET clientSocket = socket(AF_INET,SOCK_STREAM, IPPROTO_TCP);
     if (clientSocket == INVALID_SOCKET)
     {
         cout << "khoi tao socket that bai\n";
@@ -66,7 +68,6 @@ int main(int argc, char* argv[]){
 
    while (true){
         string msv, name;
-        int lanGui = 0;
 
         cout << "\nNhap ma sinh vien (nhap exit de thoat): ";
         cin >> msv;
@@ -89,8 +90,6 @@ int main(int argc, char* argv[]){
         int len = svData.size();
 
 
-
-     
         send(clientSocket, svData.c_str(), len, 0);
 
         cout << "Da gui sinh vien: "

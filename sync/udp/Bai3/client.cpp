@@ -1,49 +1,42 @@
-#include <bits/stdc++.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include<bits/stdc++.h>
+#include<winsock2.h>
+#include<ws2tcpip.h>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/serialization/string.hpp>
-#include <boost/serialization/vector.hpp>
-#pragma comment(lib, "ws2_32.lib")
+#include<boost/serialization/vector.hpp>
 using namespace std;
 
-class Account
-{
-private:
-    string username, password;
-    bool isExist = false;
-    friend class boost::serialization::access;
-    template <class Archive>
-    void serialize(Archive &ar, const unsigned int version)
-    {
-        ar & username;
-        ar & password;
-        ar & isExist;
-    }
+class Account{
+    private:
+        string username, password;
+        bool isExist = false;
+        friend class boost::serialization::access;
+        template <class Archive>
+        void serialize(Archive &ar, const unsigned int version){
+            ar& username;
+            ar& password;
+            ar& isExist;
+        }
 
-public:
-    Account() {}
-    Account(string username, string password)
-    {
-        this->username = username;
-        this->password = password;
-    }
-    string getUsername() { return this->username; }
-    string getPassword() { return this->password; }
-    void setIsExist(bool ex)
-    {
-        this->isExist = ex;
-    }
-    bool isExists() { return this->isExist; }
+    public:
+        Account(){} 
+        Account(string username, string password){
+           this->username = username;
+           this->password = password;
+        }
+        string getUsername(){return this->username;}
+        string getPassword(){return this->password;}
+        void setIsExist(bool ex){
+            this->isExist = ex;
+        }
+        bool isExists(){return this->isExist;}
 };
 
-int main()
-{
+int main(){
     WSADATA wsa;
     u_short port = 8387;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
-    {
+    if(WSAStartup(MAKEWORD(2,2), &wsa) != 0){
         cout << "Loi khoi tao moi truong" << WSAGetLastError();
         return 1;
     }
@@ -57,9 +50,9 @@ int main()
 
     string u, p;
     cout << "Nhap tai khoan:\n";
-    cin >> u;
+    cin>>u;
     cout << "Nhap mat khau:\n";
-    cin >> p;
+    cin>>p;
 
     // serialize
     Account a(u, p);
@@ -69,16 +62,15 @@ int main()
 
     string accData = ss.str();
 
-    sendto(client_socket, accData.data(), accData.size(), 0, (SOCKADDR *)&server_addr, sizeof(server_addr));
+    sendto(client_socket, accData.data(), accData.size(), 0, (SOCKADDR*)&server_addr, sizeof(server_addr));
 
     // nhan
     string buffer(2048, '\0');
     int len = sizeof(server_addr);
 
-    int received = recvfrom(client_socket, buffer.data(), buffer.size(), 0, (SOCKADDR *)&server_addr, &len);
+    int received = recvfrom(client_socket, buffer.data(), buffer.size(), 0, (SOCKADDR*)&server_addr, &len);
 
-    if (received <= 0)
-    {
+    if (received <= 0) {
         cout << "Loi nhan du lieu\n";
         return 1;
     }
@@ -91,12 +83,9 @@ int main()
     boost::archive::binary_iarchive bia(ss2);
     bia >> data;
 
-    if (data.isExists())
-    {
+    if(data.isExists()){
         cout << "Tai khoan da ton tai trong csdl\n";
-    }
-    else
-    {
+    }else{
         cout << "Ko ton tai tai khoan nay\n";
     }
 
